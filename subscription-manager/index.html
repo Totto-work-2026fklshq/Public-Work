@@ -191,8 +191,13 @@
       background: var(--surface);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      overflow: hidden;
       transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+
+    .sub-card-inner {
+      border-radius: var(--radius);
+      overflow: hidden;
     }
 
     .sub-card:active {
@@ -274,6 +279,7 @@
     .card-amount {
       text-align: right;
       flex-shrink: 0;
+      padding-right: 36px;
     }
 
     .amount-main {
@@ -290,8 +296,9 @@
 
     /* Card Menu */
     .card-menu-wrap {
-      position: relative;
-      flex-shrink: 0;
+      position: absolute;
+      top: 8px;
+      right: 4px;
     }
 
     .card-menu-btn {
@@ -973,32 +980,34 @@ function renderCard(sub) {
   card.className = 'sub-card';
   card.dataset.id = sub.id;
   card.innerHTML = `
-    <div class="card-body">
-      <div class="card-accent" style="background:${color}"></div>
-      <div class="card-info">
-        <div class="card-name">${escapeHTML(sub.name)}</div>
-        <div class="card-meta">
-          <span class="category-badge" style="background:${color}">${CATEGORY_LABELS[sub.category] || 'その他'}</span>
-          <span class="billing-date">📅 ${formatDate(sub.nextBillingDate)}</span>
-          ${alertBadgeHTML}
+    <div class="sub-card-inner">
+      <div class="card-body">
+        <div class="card-accent" style="background:${color}"></div>
+        <div class="card-info">
+          <div class="card-name">${escapeHTML(sub.name)}</div>
+          <div class="card-meta">
+            <span class="category-badge" style="background:${color}">${CATEGORY_LABELS[sub.category] || 'その他'}</span>
+            <span class="billing-date">📅 ${formatDate(sub.nextBillingDate)}</span>
+            ${alertBadgeHTML}
+          </div>
+        </div>
+        <div class="card-amount">
+          <div class="amount-main">${formatCurrency(monthly)}<span style="font-size:12px;font-weight:500;color:var(--text-sub)">/月</span></div>
+          ${amountSubHTML}
         </div>
       </div>
-      <div class="card-amount">
-        <div class="amount-main">${formatCurrency(monthly)}<span style="font-size:12px;font-weight:500;color:var(--text-sub)">/月</span></div>
-        ${amountSubHTML}
-      </div>
-      <div class="card-menu-wrap">
-        <button class="card-menu-btn" aria-label="メニュー">···</button>
-        <div class="card-dropdown">
-          <button class="dropdown-item edit-btn">✏️ 編集</button>
-          <button class="dropdown-item delete delete-btn">🗑 削除</button>
-        </div>
+      <div class="delete-confirm">
+        <span class="delete-confirm-text">「${escapeHTML(sub.name)}」を削除しますか？</span>
+        <button class="delete-confirm-btn no cancel-delete-btn">キャンセル</button>
+        <button class="delete-confirm-btn yes confirm-delete-btn">削除</button>
       </div>
     </div>
-    <div class="delete-confirm">
-      <span class="delete-confirm-text">「${escapeHTML(sub.name)}」を削除しますか？</span>
-      <button class="delete-confirm-btn no cancel-delete-btn">キャンセル</button>
-      <button class="delete-confirm-btn yes confirm-delete-btn">削除</button>
+    <div class="card-menu-wrap">
+      <button class="card-menu-btn" aria-label="メニュー">···</button>
+      <div class="card-dropdown">
+        <button class="dropdown-item edit-btn">✏️ 編集</button>
+        <button class="dropdown-item delete delete-btn">🗑 削除</button>
+      </div>
     </div>
   `;
 
