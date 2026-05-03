@@ -288,28 +288,59 @@
       margin-top: 1px;
     }
 
-    /* Card Actions */
-    .card-actions {
-      display: flex;
-      border-top: 1px solid var(--separator);
+    /* Card Menu */
+    .card-menu-wrap {
+      position: relative;
+      flex-shrink: 0;
     }
 
-    .card-action-btn {
-      flex: 1;
-      padding: 10px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--primary);
+    .card-menu-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 20px;
+      color: var(--text-light);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      letter-spacing: -1px;
       transition: background 0.15s;
-      min-height: 44px;
     }
 
-    .card-action-btn:active { background: var(--bg); }
-    .card-action-btn.delete { color: var(--alert-red); border-left: 1px solid var(--separator); }
+    .card-menu-btn:active { background: var(--bg); }
+
+    .card-dropdown {
+      display: none;
+      position: absolute;
+      right: 4px;
+      top: calc(100% - 4px);
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      overflow: hidden;
+      z-index: 50;
+      min-width: 130px;
+    }
+
+    .card-dropdown.show { display: block; }
+
+    .dropdown-item {
+      width: 100%;
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--separator);
+      transition: background 0.1s;
+    }
+
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:active { background: var(--bg); }
+    .dropdown-item.delete { color: var(--alert-red); }
 
     /* Delete Confirm */
     .delete-confirm {
@@ -956,10 +987,13 @@ function renderCard(sub) {
         <div class="amount-main">${formatCurrency(monthly)}<span style="font-size:12px;font-weight:500;color:var(--text-sub)">/月</span></div>
         ${amountSubHTML}
       </div>
-    </div>
-    <div class="card-actions">
-      <button class="card-action-btn edit-btn" aria-label="${escapeHTML(sub.name)}を編集">✏️ 編集</button>
-      <button class="card-action-btn delete delete-btn" aria-label="${escapeHTML(sub.name)}を削除">🗑 削除</button>
+      <div class="card-menu-wrap">
+        <button class="card-menu-btn" aria-label="メニュー">···</button>
+        <div class="card-dropdown">
+          <button class="dropdown-item edit-btn">✏️ 編集</button>
+          <button class="dropdown-item delete delete-btn">🗑 削除</button>
+        </div>
+      </div>
     </div>
     <div class="delete-confirm">
       <span class="delete-confirm-text">「${escapeHTML(sub.name)}」を削除しますか？</span>
@@ -968,8 +1002,19 @@ function renderCard(sub) {
     </div>
   `;
 
-  card.querySelector('.edit-btn').addEventListener('click', () => openModal(sub.id));
+  card.querySelector('.card-menu-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.card-dropdown.show').forEach(d => {
+      if (d !== card.querySelector('.card-dropdown')) d.classList.remove('show');
+    });
+    card.querySelector('.card-dropdown').classList.toggle('show');
+  });
+  card.querySelector('.edit-btn').addEventListener('click', () => {
+    card.querySelector('.card-dropdown').classList.remove('show');
+    openModal(sub.id);
+  });
   card.querySelector('.delete-btn').addEventListener('click', () => {
+    card.querySelector('.card-dropdown').classList.remove('show');
     card.querySelector('.delete-confirm').classList.add('show');
   });
   card.querySelector('.cancel-delete-btn').addEventListener('click', () => {
@@ -1153,34 +1198,30 @@ function init() {
       e.target.value = '';
     }
   });
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.card-dropdown.show').forEach(d => d.classList.remove('show'));
+  });
 }
 
 // ===== App Icon (Giraffe) =====
 function createAppIcon() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
     <rect width="180" height="180" rx="36" fill="#F5C518"/>
-    <path d="M70,180 L70,94 Q70,72 90,64 Q110,72 110,94 L110,180 Z" fill="#D4881E"/>
-    <polygon points="74,108 87,103 90,119 77,122" fill="#7B3A10"/>
-    <polygon points="93,100 106,96 107,113 95,116" fill="#7B3A10"/>
-    <polygon points="72,136 85,132 87,148 74,151" fill="#7B3A10"/>
-    <polygon points="94,130 107,127 108,143 95,146" fill="#7B3A10"/>
-    <polygon points="74,161 87,158 88,173 75,175" fill="#7B3A10"/>
-    <polygon points="95,158 108,155 109,171 96,173" fill="#7B3A10"/>
-    <ellipse cx="90" cy="60" rx="23" ry="21" fill="#D4881E"/>
-    <rect x="79" y="18" width="8" height="26" rx="4" fill="#7B3A10"/>
-    <circle cx="83" cy="17" r="6.5" fill="#4A2008"/>
-    <rect x="93" y="18" width="8" height="26" rx="4" fill="#7B3A10"/>
-    <circle cx="97" cy="17" r="6.5" fill="#4A2008"/>
-    <ellipse cx="83" cy="57" rx="7.5" ry="8.5" fill="#FFFFFF"/>
-    <ellipse cx="83" cy="57" rx="4.5" ry="5.5" fill="#1A1A1A"/>
-    <circle cx="84.5" cy="55" r="1.8" fill="#FFFFFF"/>
-    <ellipse cx="88" cy="73" rx="12" ry="7" fill="#BA7018"/>
-    <circle cx="84" cy="73" r="2.8" fill="#4A2008"/>
-    <circle cx="93" cy="73" r="2.8" fill="#4A2008"/>
-    <path d="M68,60 Q57,46 62,39 Q70,43 74,57 Z" fill="#D4881E"/>
-    <path d="M68,59 Q62,48 64,43 Q70,46 73,56 Z" fill="#E8B860"/>
-    <polygon points="94,47 107,44 108,56 95,59" fill="#BA7018"/>
-    <polygon points="78,43 88,40 88,50 78,52" fill="#BA7018"/>
+    <polygon points="8,180 52,180 118,32 84,20" fill="#2D2416"/>
+    <polygon points="19,176 28,176 90,50 82,50" fill="#F5C518"/>
+    <polygon points="32,170 40,166 98,46 91,50" fill="#F5C518"/>
+    <polygon points="46,158 53,153 105,44 99,48" fill="#F5C518"/>
+    <polygon points="84,20 116,26 170,64 172,86 162,100 148,102 116,86 84,58 72,38" fill="#2D2416"/>
+    <polygon points="90,30 104,27 108,46 94,50" fill="#F5C518"/>
+    <polygon points="106,44 120,40 124,60 110,64" fill="#F5C518"/>
+    <polygon points="68,40 52,28 58,17 73,33" fill="#2D2416"/>
+    <rect x="76" y="2" width="9" height="24" rx="4.5" fill="#2D2416"/>
+    <circle cx="80.5" cy="2" r="8" fill="#2D2416"/>
+    <rect x="91" y="5" width="9" height="21" rx="4.5" fill="#2D2416"/>
+    <circle cx="95.5" cy="5" r="8" fill="#2D2416"/>
+    <circle cx="116" cy="54" r="6" fill="#F5C518"/>
+    <ellipse cx="164" cy="92" rx="5.5" ry="3.5" fill="#F5C518"/>
   </svg>`;
 
   const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
