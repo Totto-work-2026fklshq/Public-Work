@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="サブスク管理">
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" id="app-touch-icon" sizes="180x180" href="">
   <title>サブスク管理</title>
   <style>
     :root {
@@ -722,6 +723,22 @@
 const STORAGE_KEY = 'subscription_app_v1';
 const ALERT_DAYS = 7;
 
+const DEFAULT_DATA = [
+  { name: 'Spotify',       amount: 980,   billingCycle: 'monthly', nextBillingDate: '2026-05-28', category: 'music',         memo: '' },
+  { name: 'WOWOW',         amount: 17500, billingCycle: 'yearly',  nextBillingDate: '2026-08-02', category: 'entertainment', memo: '' },
+  { name: 'iCloud',        amount: 130,   billingCycle: 'monthly', nextBillingDate: '2026-05-16', category: 'cloud',         memo: '' },
+  { name: 'povo',          amount: 2167,  billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'other',         memo: '' },
+  { name: '1Password',     amount: 660,   billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'software',      memo: '' },
+  { name: 'Youtube_MB',    amount: 550,   billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'entertainment', memo: '' },
+  { name: 'Dラボ DaiGo',  amount: 875,   billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'news',          memo: '' },
+  { name: 'Dラボ AI',     amount: 1319,  billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'software',      memo: '' },
+  { name: 'splice',        amount: 2125,  billingCycle: 'monthly', nextBillingDate: '2026-05-19', category: 'music',         memo: '' },
+  { name: 'Canva',         amount: 1180,  billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'software',      memo: '' },
+  { name: 'AGA',           amount: 12230, billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'other',         memo: '' },
+  { name: 'U-NEXT',        amount: 3589,  billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'entertainment', memo: '' },
+  { name: 'Google Cloud',  amount: 242,   billingCycle: 'monthly', nextBillingDate: '2026-06-03', category: 'cloud',         memo: '' },
+];
+
 const CATEGORY_LABELS = {
   entertainment: '🎬 動画',
   music: '🎵 音楽',
@@ -753,7 +770,16 @@ const AppState = {
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    AppState.subscriptions = raw ? JSON.parse(raw) : [];
+    if (raw) {
+      AppState.subscriptions = JSON.parse(raw);
+    } else {
+      AppState.subscriptions = DEFAULT_DATA.map(d => ({
+        ...d,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+      }));
+      saveToStorage();
+    }
   } catch {
     AppState.subscriptions = [];
   }
@@ -1129,7 +1155,48 @@ function init() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// ===== App Icon (Giraffe) =====
+function createAppIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+    <rect width="180" height="180" rx="36" fill="#F5C518"/>
+    <path d="M70,180 L70,94 Q70,72 90,64 Q110,72 110,94 L110,180 Z" fill="#D4881E"/>
+    <polygon points="74,108 87,103 90,119 77,122" fill="#7B3A10"/>
+    <polygon points="93,100 106,96 107,113 95,116" fill="#7B3A10"/>
+    <polygon points="72,136 85,132 87,148 74,151" fill="#7B3A10"/>
+    <polygon points="94,130 107,127 108,143 95,146" fill="#7B3A10"/>
+    <polygon points="74,161 87,158 88,173 75,175" fill="#7B3A10"/>
+    <polygon points="95,158 108,155 109,171 96,173" fill="#7B3A10"/>
+    <ellipse cx="90" cy="60" rx="23" ry="21" fill="#D4881E"/>
+    <rect x="79" y="18" width="8" height="26" rx="4" fill="#7B3A10"/>
+    <circle cx="83" cy="17" r="6.5" fill="#4A2008"/>
+    <rect x="93" y="18" width="8" height="26" rx="4" fill="#7B3A10"/>
+    <circle cx="97" cy="17" r="6.5" fill="#4A2008"/>
+    <ellipse cx="83" cy="57" rx="7.5" ry="8.5" fill="#FFFFFF"/>
+    <ellipse cx="83" cy="57" rx="4.5" ry="5.5" fill="#1A1A1A"/>
+    <circle cx="84.5" cy="55" r="1.8" fill="#FFFFFF"/>
+    <ellipse cx="88" cy="73" rx="12" ry="7" fill="#BA7018"/>
+    <circle cx="84" cy="73" r="2.8" fill="#4A2008"/>
+    <circle cx="93" cy="73" r="2.8" fill="#4A2008"/>
+    <path d="M68,60 Q57,46 62,39 Q70,43 74,57 Z" fill="#D4881E"/>
+    <path d="M68,59 Q62,48 64,43 Q70,46 73,56 Z" fill="#E8B860"/>
+    <polygon points="94,47 107,44 108,56 95,59" fill="#BA7018"/>
+    <polygon points="78,43 88,40 88,50 78,52" fill="#BA7018"/>
+  </svg>`;
+
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const img = new Image();
+  img.onload = function() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 180;
+    c.getContext('2d').drawImage(img, 0, 0, 180, 180);
+    const png = c.toDataURL('image/png');
+    const link = document.getElementById('app-touch-icon');
+    if (link) link.href = png;
+  };
+  img.src = url;
+}
+
+document.addEventListener('DOMContentLoaded', () => { init(); createAppIcon(); });
 </script>
 </body>
 </html>
