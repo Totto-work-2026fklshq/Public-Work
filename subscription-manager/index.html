@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="サブスク管理">
+  <link rel="manifest" href="manifest.json">
+  <title>サブスク管理</title>
+  <style>
+    :root {
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --surface2: #F9F9FB;
+      --primary: #007AFF;
+      --primary-dark: #0056CC;
+      --text: #1C1C1E;
+      --text-sub: #6B6B6B;
+      --text-light: #AEAEB2;
+      --separator: #E5E5EA;
+      --alert-red: #FF3B30;
+      --alert-orange: #FF9500;
+      --alert-yellow: #CC9900;
+      --success: #34C759;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+
+      --cat-entertainment: #FF2D55;
+      --cat-music: #FF9500;
+      --cat-software: #5856D6;
+      --cat-cloud: #007AFF;
+      --cat-news: #34C759;
+      --cat-fitness: #FF6B00;
+      --cat-other: #8E8E93;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      font-family: inherit;
+    }
+
+    input, select, textarea {
+      font-family: inherit;
+      font-size: 16px; /* iOS zoom防止 */
+    }
+
+    /* ===== HEADER ===== */
+    #app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--separator);
+      padding: env(safe-area-inset-top, 0) 16px 0;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .header-total {
+      text-align: right;
+    }
+
+    .header-total-label {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .header-total-amount {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    /* ===== ALERT BANNER ===== */
+    #alert-banner {
+      display: none;
+      margin: 12px 16px 0;
+      padding: 10px 14px;
+      background: #FFF3CD;
+      border: 1px solid #FFCC00;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: #856404;
+      font-weight: 500;
+    }
+
+    #alert-banner.has-urgent {
+      background: #FFE5E5;
+      border-color: var(--alert-red);
+      color: #8B1A1A;
+    }
+
+    /* ===== SUMMARY BAR ===== */
+    #summary-bar {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+    }
+
+    .summary-card {
+      flex: 1;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-label {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+
+    .summary-amount {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .summary-sub {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 2px;
+    }
+
+    /* ===== SORT BAR ===== */
+    #sort-bar {
+      display: flex;
+      align-items: center;
+      padding: 0 16px 8px;
+      gap: 8px;
+    }
+
+    .sort-label {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    #sort-select {
+      font-size: 13px;
+      color: var(--primary);
+      background: none;
+      border: none;
+      font-weight: 500;
+      -webkit-tap-highlight-color: transparent;
+      padding: 4px 2px;
+    }
+
+    /* ===== CARD LIST ===== */
+    #card-list {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0));
+    }
+
+    /* ===== CARD ===== */
+    .sub-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .sub-card:active {
+      transform: scale(0.98);
+    }
+
+    .card-body {
+      display: flex;
+      align-items: center;
+      padding: 14px 14px 14px 0;
+      gap: 12px;
+    }
+
+    .card-accent {
+      width: 4px;
+      align-self: stretch;
+      border-radius: 0 2px 2px 0;
+      flex-shrink: 0;
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      opacity: 0.15;
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+      flex-wrap: wrap;
+    }
+
+    .category-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 100px;
+      color: white;
+    }
+
+    .billing-date {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .alert-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 100px;
+    }
+
+    .alert-badge.urgent { background: #FFE5E5; color: var(--alert-red); }
+    .alert-badge.warning { background: #FFF0E0; color: var(--alert-orange); }
+    .alert-badge.notice { background: #FFFBE6; color: var(--alert-yellow); }
+
+    .card-amount {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .amount-main {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .amount-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 1px;
+    }
+
+    /* Card Actions */
+    .card-actions {
+      display: flex;
+      border-top: 1px solid var(--separator);
+    }
+
+    .card-action-btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.15s;
+      min-height: 44px;
+    }
+
+    .card-action-btn:active { background: var(--bg); }
+    .card-action-btn.delete { color: var(--alert-red); border-left: 1px solid var(--separator); }
+
+    /* Delete Confirm */
+    .delete-confirm {
+      display: none;
+      padding: 12px 14px;
+      background: #FFF5F5;
+      border-top: 1px solid #FFD5D5;
+      font-size: 13px;
+      color: var(--text);
+      align-items: center;
+      gap: 8px;
+    }
+
+    .delete-confirm.show { display: flex; }
+    .delete-confirm-text { flex: 1; }
+
+    .delete-confirm-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 32px;
+    }
+
+    .delete-confirm-btn.yes { background: var(--alert-red); color: white; }
+    .delete-confirm-btn.no { background: var(--separator); color: var(--text); }
+
+    /* ===== EMPTY STATE ===== */
+    #empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 32px;
+      text-align: center;
+      color: var(--text-sub);
+    }
+
+    #empty-state.show { display: flex; }
+
+    .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .empty-desc { font-size: 14px; line-height: 1.5; }
+
+    /* ===== FAB ===== */
+    #fab {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom, 0));
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 28px;
+      font-weight: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,122,255,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+      z-index: 200;
+    }
+
+    #fab:active {
+      transform: scale(0.92);
+      box-shadow: 0 2px 6px rgba(0,122,255,0.3);
+    }
+
+    /* ===== MODAL ===== */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 300;
+      align-items: flex-end;
+    }
+
+    #modal-overlay.show { display: flex; }
+
+    #modal {
+      background: var(--surface);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-height: 92dvh;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    #modal-overlay.show #modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--separator);
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .modal-cancel {
+      font-size: 16px;
+      color: var(--text-sub);
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-save {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--primary);
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-save:disabled { color: var(--text-light); }
+
+    /* ===== FORM ===== */
+    #subscription-form {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .form-row .form-group { flex: 1; }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      padding-left: 2px;
+    }
+
+    .form-label span { color: var(--alert-red); }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--separator);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      color: var(--text);
+      background: var(--surface2);
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--primary);
+      background: var(--surface);
+    }
+
+    .form-input.error, .form-select.error { border-color: var(--alert-red); }
+
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6B6B' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    .form-textarea {
+      resize: none;
+      height: 72px;
+      line-height: 1.5;
+    }
+
+    .form-error {
+      font-size: 12px;
+      color: var(--alert-red);
+      padding-left: 2px;
+      display: none;
+    }
+
+    .form-error.show { display: block; }
+
+    .amount-input-wrap {
+      position: relative;
+    }
+
+    .amount-prefix {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--text-sub);
+      pointer-events: none;
+    }
+
+    .amount-input-wrap .form-input {
+      padding-left: 28px;
+    }
+
+    /* ===== SCROLLBAR HIDE ===== */
+    #subscription-form::-webkit-scrollbar { display: none; }
+    #card-list::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="app-header">
+  <div class="header-inner">
+    <div class="header-title">📋 サブスク管理</div>
+    <div class="header-total">
+      <div class="header-total-label">今月の合計</div>
+      <div class="header-total-amount" id="header-total">¥0</div>
+    </div>
+  </div>
+</header>
+
+<!-- Alert Banner -->
+<div id="alert-banner"></div>
+
+<!-- Summary Bar -->
+<div id="summary-bar">
+  <div class="summary-card">
+    <div class="summary-label">月払い合計</div>
+    <div class="summary-amount" id="summary-monthly">¥0</div>
+    <div class="summary-sub" id="summary-monthly-count">0件</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">年払い合計（月換算）</div>
+    <div class="summary-amount" id="summary-yearly">¥0</div>
+    <div class="summary-sub" id="summary-yearly-count">0件</div>
+  </div>
+</div>
+
+<!-- Sort Bar -->
+<div id="sort-bar">
+  <span class="sort-label">並び替え：</span>
+  <select id="sort-select">
+    <option value="nextBillingDate">更新日順</option>
+    <option value="amount">金額順</option>
+    <option value="name">名前順</option>
+  </select>
+</div>
+
+<!-- Card List -->
+<div id="card-list"></div>
+
+<!-- Empty State -->
+<div id="empty-state">
+  <div class="empty-icon">💳</div>
+  <div class="empty-title">サブスクを追加しよう</div>
+  <div class="empty-desc">右下の＋ボタンから<br>サービスを登録できます</div>
+</div>
+
+<!-- FAB -->
+<button id="fab" aria-label="サブスクを追加">＋</button>
+
+<!-- Modal -->
+<div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div id="modal">
+    <div class="modal-header">
+      <button class="modal-cancel" id="modal-cancel">キャンセル</button>
+      <div class="modal-title" id="modal-title">サブスクを追加</div>
+      <button class="modal-save" id="modal-save">保存</button>
+    </div>
+    <form id="subscription-form" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="f-name">サービス名 <span>*</span></label>
+        <input class="form-input" type="text" id="f-name" placeholder="例：Netflix" maxlength="50" autocomplete="off">
+        <div class="form-error" id="e-name">サービス名を入力してください</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="f-amount">金額 <span>*</span></label>
+          <div class="amount-input-wrap">
+            <span class="amount-prefix">¥</span>
+            <input class="form-input" type="number" id="f-amount" placeholder="1490" min="1" inputmode="numeric">
+          </div>
+          <div class="form-error" id="e-amount">正しい金額を入力してください</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="f-cycle">支払い <span>*</span></label>
+          <select class="form-select" id="f-cycle">
+            <option value="monthly">月払い</option>
+            <option value="yearly">年払い</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="f-date">次回更新日 <span>*</span></label>
+        <input class="form-input" type="date" id="f-date">
+        <div class="form-error" id="e-date">更新日を選択してください</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="f-category">カテゴリ <span>*</span></label>
+        <select class="form-select" id="f-category">
+          <option value="entertainment">🎬 動画・エンタメ</option>
+          <option value="music">🎵 音楽</option>
+          <option value="software">💻 ソフトウェア</option>
+          <option value="cloud">☁️ クラウド</option>
+          <option value="news">📰 ニュース・情報</option>
+          <option value="fitness">🏃 フィットネス</option>
+          <option value="other">📦 その他</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="f-memo">メモ</label>
+        <textarea class="form-textarea" id="f-memo" placeholder="任意メモ（200文字まで）" maxlength="200"></textarea>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const STORAGE_KEY = 'subscription_app_v1';
+const ALERT_DAYS = 7;
+
+const CATEGORY_LABELS = {
+  entertainment: '🎬 動画',
+  music: '🎵 音楽',
+  software: '💻 ソフト',
+  cloud: '☁️ クラウド',
+  news: '📰 ニュース',
+  fitness: '🏃 フィット',
+  other: '📦 その他',
+};
+
+const CATEGORY_COLORS = {
+  entertainment: '#FF2D55',
+  music: '#FF9500',
+  software: '#5856D6',
+  cloud: '#007AFF',
+  news: '#34C759',
+  fitness: '#FF6B00',
+  other: '#8E8E93',
+};
+
+// ===== AppState =====
+const AppState = {
+  subscriptions: [],
+  editingId: null,
+  sortBy: 'nextBillingDate',
+};
+
+// ===== Storage =====
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    AppState.subscriptions = raw ? JSON.parse(raw) : [];
+  } catch {
+    AppState.subscriptions = [];
+  }
+}
+
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState.subscriptions));
+}
+
+// ===== Calculation =====
+function calcMonthlyAmount(sub) {
+  return sub.billingCycle === 'yearly' ? Math.round(sub.amount / 12) : sub.amount;
+}
+
+function calcMonthlyTotal() {
+  return AppState.subscriptions.reduce((sum, s) => sum + calcMonthlyAmount(s), 0);
+}
+
+function getDaysUntilBilling(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.round((target - today) / 86400000);
+}
+
+function getAlertLevel(days) {
+  if (days <= 0) return 'urgent';
+  if (days <= 3) return 'urgent';
+  if (days <= 7) return 'warning';
+  return 'none';
+}
+
+function formatCurrency(n) {
+  return '¥' + n.toLocaleString('ja-JP');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// ===== CRUD =====
+function addSubscription(data) {
+  AppState.subscriptions.push({
+    id: crypto.randomUUID(),
+    ...data,
+    createdAt: new Date().toISOString(),
+  });
+  saveToStorage();
+  renderAll();
+}
+
+function updateSubscription(id, data) {
+  const idx = AppState.subscriptions.findIndex(s => s.id === id);
+  if (idx !== -1) {
+    AppState.subscriptions[idx] = { ...AppState.subscriptions[idx], ...data };
+    saveToStorage();
+    renderAll();
+  }
+}
+
+function deleteSubscription(id) {
+  AppState.subscriptions = AppState.subscriptions.filter(s => s.id !== id);
+  saveToStorage();
+  renderAll();
+}
+
+// ===== Render =====
+function renderAll() {
+  renderHeader();
+  renderSummaryBar();
+  renderAlertBanner();
+  renderCardList();
+}
+
+function renderHeader() {
+  document.getElementById('header-total').textContent = formatCurrency(calcMonthlyTotal());
+}
+
+function renderSummaryBar() {
+  const monthlySubs = AppState.subscriptions.filter(s => s.billingCycle === 'monthly');
+  const yearlySubs = AppState.subscriptions.filter(s => s.billingCycle === 'yearly');
+  const monthlyTotal = monthlySubs.reduce((sum, s) => sum + s.amount, 0);
+  const yearlyMonthly = yearlySubs.reduce((sum, s) => sum + Math.round(s.amount / 12), 0);
+
+  document.getElementById('summary-monthly').textContent = formatCurrency(monthlyTotal);
+  document.getElementById('summary-monthly-count').textContent = `${monthlySubs.length}件`;
+  document.getElementById('summary-yearly').textContent = formatCurrency(yearlyMonthly);
+  document.getElementById('summary-yearly-count').textContent = `${yearlySubs.length}件`;
+}
+
+function renderAlertBanner() {
+  const banner = document.getElementById('alert-banner');
+  const alertSubs = AppState.subscriptions.filter(s => {
+    const days = getDaysUntilBilling(s.nextBillingDate);
+    return days <= ALERT_DAYS;
+  });
+
+  if (alertSubs.length === 0) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  const hasUrgent = alertSubs.some(s => getDaysUntilBilling(s.nextBillingDate) <= 3);
+  banner.style.display = 'block';
+  banner.className = hasUrgent ? 'has-urgent' : '';
+
+  const icon = hasUrgent ? '🚨' : '⚠️';
+  const names = alertSubs.slice(0, 2).map(s => s.name).join('、');
+  const more = alertSubs.length > 2 ? `など${alertSubs.length}件` : `${alertSubs.length}件`;
+  banner.textContent = `${icon} 更新が近いサービス：${names}${alertSubs.length > 2 ? ' ' + more : '（' + more + '）'}`;
+}
+
+function renderCardList() {
+  const list = document.getElementById('card-list');
+  const empty = document.getElementById('empty-state');
+
+  if (AppState.subscriptions.length === 0) {
+    list.innerHTML = '';
+    empty.classList.add('show');
+    return;
+  }
+
+  empty.classList.remove('show');
+
+  const sorted = [...AppState.subscriptions].sort((a, b) => {
+    if (AppState.sortBy === 'nextBillingDate') {
+      return new Date(a.nextBillingDate) - new Date(b.nextBillingDate);
+    } else if (AppState.sortBy === 'amount') {
+      return calcMonthlyAmount(b) - calcMonthlyAmount(a);
+    } else {
+      return a.name.localeCompare(b.name, 'ja');
+    }
+  });
+
+  list.innerHTML = '';
+  sorted.forEach(sub => list.appendChild(renderCard(sub)));
+}
+
+function renderCard(sub) {
+  const days = getDaysUntilBilling(sub.nextBillingDate);
+  const alertLevel = getAlertLevel(days);
+  const color = CATEGORY_COLORS[sub.category] || CATEGORY_COLORS.other;
+  const monthly = calcMonthlyAmount(sub);
+
+  let alertBadgeHTML = '';
+  if (alertLevel === 'urgent') {
+    const label = days <= 0 ? '更新超過' : days === 0 ? '本日更新' : `${days}日後`;
+    alertBadgeHTML = `<span class="alert-badge urgent">🚨 ${label}</span>`;
+  } else if (alertLevel === 'warning') {
+    alertBadgeHTML = `<span class="alert-badge warning">⚠️ ${days}日後</span>`;
+  }
+
+  const amountSubHTML = sub.billingCycle === 'yearly'
+    ? `<div class="amount-sub">${formatCurrency(sub.amount)}/年</div>`
+    : '';
+
+  const card = document.createElement('div');
+  card.className = 'sub-card';
+  card.dataset.id = sub.id;
+  card.innerHTML = `
+    <div class="card-body">
+      <div class="card-accent" style="background:${color}"></div>
+      <div class="card-info">
+        <div class="card-name">${escapeHTML(sub.name)}</div>
+        <div class="card-meta">
+          <span class="category-badge" style="background:${color}">${CATEGORY_LABELS[sub.category] || 'その他'}</span>
+          <span class="billing-date">📅 ${formatDate(sub.nextBillingDate)}</span>
+          ${alertBadgeHTML}
+        </div>
+      </div>
+      <div class="card-amount">
+        <div class="amount-main">${formatCurrency(monthly)}<span style="font-size:12px;font-weight:500;color:var(--text-sub)">/月</span></div>
+        ${amountSubHTML}
+      </div>
+    </div>
+    <div class="card-actions">
+      <button class="card-action-btn edit-btn" aria-label="${escapeHTML(sub.name)}を編集">✏️ 編集</button>
+      <button class="card-action-btn delete delete-btn" aria-label="${escapeHTML(sub.name)}を削除">🗑 削除</button>
+    </div>
+    <div class="delete-confirm">
+      <span class="delete-confirm-text">「${escapeHTML(sub.name)}」を削除しますか？</span>
+      <button class="delete-confirm-btn no cancel-delete-btn">キャンセル</button>
+      <button class="delete-confirm-btn yes confirm-delete-btn">削除</button>
+    </div>
+  `;
+
+  card.querySelector('.edit-btn').addEventListener('click', () => openModal(sub.id));
+  card.querySelector('.delete-btn').addEventListener('click', () => {
+    card.querySelector('.delete-confirm').classList.add('show');
+  });
+  card.querySelector('.cancel-delete-btn').addEventListener('click', () => {
+    card.querySelector('.delete-confirm').classList.remove('show');
+  });
+  card.querySelector('.confirm-delete-btn').addEventListener('click', () => deleteSubscription(sub.id));
+
+  return card;
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== Modal =====
+function openModal(id) {
+  AppState.editingId = id || null;
+  const isEdit = id !== null;
+
+  document.getElementById('modal-title').textContent = isEdit ? 'サブスクを編集' : 'サブスクを追加';
+  clearFormErrors();
+
+  if (isEdit) {
+    const sub = AppState.subscriptions.find(s => s.id === id);
+    if (sub) populateForm(sub);
+  } else {
+    document.getElementById('subscription-form').reset();
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+    document.getElementById('f-date').value = nextMonth.toISOString().split('T')[0];
+  }
+
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('show');
+  setTimeout(() => document.getElementById('f-name').focus(), 350);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  AppState.editingId = null;
+}
+
+function populateForm(sub) {
+  document.getElementById('f-name').value = sub.name;
+  document.getElementById('f-amount').value = sub.amount;
+  document.getElementById('f-cycle').value = sub.billingCycle;
+  document.getElementById('f-date').value = sub.nextBillingDate;
+  document.getElementById('f-category').value = sub.category;
+  document.getElementById('f-memo').value = sub.memo || '';
+}
+
+function getFormData() {
+  clearFormErrors();
+  let valid = true;
+
+  const name = document.getElementById('f-name').value.trim();
+  const amountStr = document.getElementById('f-amount').value;
+  const billingCycle = document.getElementById('f-cycle').value;
+  const nextBillingDate = document.getElementById('f-date').value;
+  const category = document.getElementById('f-category').value;
+  const memo = document.getElementById('f-memo').value.trim();
+
+  if (!name) {
+    showFormError('name', 'サービス名を入力してください');
+    valid = false;
+  }
+
+  const amount = parseInt(amountStr, 10);
+  if (!amountStr || isNaN(amount) || amount <= 0) {
+    showFormError('amount', '正しい金額を入力してください');
+    valid = false;
+  }
+
+  if (!nextBillingDate) {
+    showFormError('date', '更新日を選択してください');
+    valid = false;
+  }
+
+  if (!valid) return null;
+
+  return { name, amount, billingCycle, nextBillingDate, category, memo };
+}
+
+function showFormError(field, msg) {
+  const el = document.getElementById(`e-${field}`);
+  const input = document.getElementById(`f-${field}`);
+  if (el) { el.textContent = msg; el.classList.add('show'); }
+  if (input) input.classList.add('error');
+}
+
+function clearFormErrors() {
+  document.querySelectorAll('.form-error').forEach(el => el.classList.remove('show'));
+  document.querySelectorAll('.form-input, .form-select').forEach(el => el.classList.remove('error'));
+}
+
+// ===== Event Handlers =====
+function init() {
+  loadFromStorage();
+  renderAll();
+
+  document.getElementById('fab').addEventListener('click', () => openModal(null));
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  document.getElementById('modal-save').addEventListener('click', () => {
+    const data = getFormData();
+    if (!data) return;
+    if (AppState.editingId) {
+      updateSubscription(AppState.editingId, data);
+    } else {
+      addSubscription(data);
+    }
+    closeModal();
+  });
+
+  document.getElementById('sort-select').addEventListener('change', e => {
+    AppState.sortBy = e.target.value;
+    renderCardList();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
