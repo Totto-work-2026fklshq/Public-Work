@@ -538,6 +538,56 @@
       padding-left: 28px;
     }
 
+    /* ===== DATA BAR ===== */
+    #data-bar {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px 12px;
+    }
+
+    .data-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-height: 44px;
+      box-shadow: var(--shadow);
+      transition: opacity 0.15s;
+    }
+
+    .data-btn:active { opacity: 0.7; }
+    .data-btn.export { background: var(--surface); color: var(--primary); }
+    .data-btn.import { background: var(--surface); color: var(--text-sub); }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.78);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 500;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     /* ===== SCROLLBAR HIDE ===== */
     #subscription-form::-webkit-scrollbar { display: none; }
     #card-list::-webkit-scrollbar { display: none; }
@@ -573,6 +623,13 @@
   </div>
 </div>
 
+<!-- Data Bar -->
+<div id="data-bar">
+  <button class="data-btn export" id="export-btn">📤 エクスポート</button>
+  <button class="data-btn import" id="import-btn">📥 インポート</button>
+  <input type="file" id="import-file" accept=".json" style="display:none">
+</div>
+
 <!-- Sort Bar -->
 <div id="sort-bar">
   <span class="sort-label">並び替え：</span>
@@ -595,6 +652,9 @@
 
 <!-- FAB -->
 <button id="fab" aria-label="サブスクを追加">＋</button>
+
+<!-- Toast -->
+<div id="toast"></div>
 
 <!-- Modal -->
 <div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -979,6 +1039,48 @@ function clearFormErrors() {
   document.querySelectorAll('.form-input, .form-select').forEach(el => el.classList.remove('error'));
 }
 
+// ===== Toast =====
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ===== Export / Import =====
+function exportData() {
+  const json = JSON.stringify(AppState.subscriptions, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `subscriptions_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`✅ ${AppState.subscriptions.length}件をエクスポートしました`);
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('invalid format');
+      const count = data.length;
+      if (!confirm(`${count}件のデータをインポートします。\n現在のデータは上書きされます。よろしいですか？`)) return;
+      AppState.subscriptions = data;
+      saveToStorage();
+      renderAll();
+      showToast(`✅ ${count}件をインポートしました`);
+    } catch {
+      alert('ファイルの読み込みに失敗しました。\n正しいJSONファイルか確認してください。');
+    }
+  };
+  reader.readAsText(file);
+}
+
 // ===== Event Handlers =====
 function init() {
   loadFromStorage();
@@ -1004,6 +1106,26 @@ function init() {
   document.getElementById('sort-select').addEventListener('change', e => {
     AppState.sortBy = e.target.value;
     renderCardList();
+  });
+
+  document.getElementById('export-btn').addEventListener('click', () => {
+    if (AppState.subscriptions.length === 0) {
+      showToast('⚠️ エクスポートするデータがありません');
+      return;
+    }
+    exportData();
+  });
+
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+
+  document.getElementById('import-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) {
+      importData(file);
+      e.target.value = '';
+    }
   });
 }
 
