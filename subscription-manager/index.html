@@ -627,6 +627,25 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    /* ===== CANCELLING ===== */
+    .sub-card.is-cancelling .sub-card-inner {
+      opacity: 0.45;
+    }
+
+    .sub-card.is-cancelling .amount-main {
+      text-decoration: line-through;
+      color: var(--text-sub);
+    }
+
+    .cancelling-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 100px;
+      background: #E5E5EA;
+      color: var(--text-sub);
+    }
+
     /* ===== SCROLLBAR HIDE ===== */
     #subscription-form::-webkit-scrollbar { display: none; }
     #card-list::-webkit-scrollbar { display: none; }
@@ -676,6 +695,7 @@
     <option value="nextBillingDate">更新日順</option>
     <option value="amount">金額順</option>
     <option value="name">名前順</option>
+    <option value="category">ジャンル順</option>
   </select>
 </div>
 
@@ -787,6 +807,8 @@ const CATEGORY_LABELS = {
   other: '📦 その他',
 };
 
+const CATEGORY_ORDER = ['entertainment', 'music', 'software', 'cloud', 'news', 'fitness', 'other'];
+
 const CATEGORY_COLORS = {
   entertainment: '#FF2D55',
   music: '#FF9500',
@@ -833,7 +855,9 @@ function calcMonthlyAmount(sub) {
 }
 
 function calcMonthlyTotal() {
-  return AppState.subscriptions.reduce((sum, s) => sum + calcMonthlyAmount(s), 0);
+  return AppState.subscriptions
+    .filter(s => !s.isCancelling)
+    .reduce((sum, s) => sum + calcMonthlyAmount(s), 0);
 }
 
 function getDaysUntilBilling(dateStr) {
@@ -886,6 +910,15 @@ function deleteSubscription(id) {
   renderAll();
 }
 
+function toggleCancelling(id) {
+  const sub = AppState.subscriptions.find(s => s.id === id);
+  if (!sub) return;
+  sub.isCancelling = !sub.isCancelling;
+  saveToStorage();
+  renderAll();
+  showToast(sub.isCancelling ? '🚫 解約予定に設定しました' : '✅ 解約予定を解除しました');
+}
+
 // ===== Render =====
 function renderAll() {
   renderHeader();
@@ -899,8 +932,9 @@ function renderHeader() {
 }
 
 function renderSummaryBar() {
-  const monthlySubs = AppState.subscriptions.filter(s => s.billingCycle === 'monthly');
-  const yearlySubs = AppState.subscriptions.filter(s => s.billingCycle === 'yearly');
+  const active = AppState.subscriptions.filter(s => !s.isCancelling);
+  const monthlySubs = active.filter(s => s.billingCycle === 'monthly');
+  const yearlySubs = active.filter(s => s.billingCycle === 'yearly');
   const monthlyTotal = monthlySubs.reduce((sum, s) => sum + s.amount, 0);
   const yearlyMonthly = yearlySubs.reduce((sum, s) => sum + Math.round(s.amount / 12), 0);
 
@@ -945,10 +979,16 @@ function renderCardList() {
   empty.classList.remove('show');
 
   const sorted = [...AppState.subscriptions].sort((a, b) => {
+    // 解約予定は常に末尾
+    if (a.isCancelling !== b.isCancelling) return a.isCancelling ? 1 : -1;
     if (AppState.sortBy === 'nextBillingDate') {
       return new Date(a.nextBillingDate) - new Date(b.nextBillingDate);
     } else if (AppState.sortBy === 'amount') {
       return calcMonthlyAmount(b) - calcMonthlyAmount(a);
+    } else if (AppState.sortBy === 'category') {
+      const ia = CATEGORY_ORDER.indexOf(a.category);
+      const ib = CATEGORY_ORDER.indexOf(b.category);
+      return ia !== ib ? ia - ib : a.name.localeCompare(b.name, 'ja');
     } else {
       return a.name.localeCompare(b.name, 'ja');
     }
@@ -976,19 +1016,23 @@ function renderCard(sub) {
     ? `<div class="amount-sub">${formatCurrency(sub.amount)}/年</div>`
     : '';
 
+  const cancellingBadge = sub.isCancelling
+    ? `<span class="cancelling-badge">解約予定</span>` : '';
+
   const card = document.createElement('div');
-  card.className = 'sub-card';
+  card.className = 'sub-card' + (sub.isCancelling ? ' is-cancelling' : '');
   card.dataset.id = sub.id;
   card.innerHTML = `
     <div class="sub-card-inner">
       <div class="card-body">
-        <div class="card-accent" style="background:${color}"></div>
+        <div class="card-accent" style="background:${sub.isCancelling ? '#C7C7CC' : color}"></div>
         <div class="card-info">
           <div class="card-name">${escapeHTML(sub.name)}</div>
           <div class="card-meta">
-            <span class="category-badge" style="background:${color}">${CATEGORY_LABELS[sub.category] || 'その他'}</span>
+            <span class="category-badge" style="background:${sub.isCancelling ? '#C7C7CC' : color}">${CATEGORY_LABELS[sub.category] || 'その他'}</span>
             <span class="billing-date">📅 ${formatDate(sub.nextBillingDate)}</span>
-            ${alertBadgeHTML}
+            ${cancellingBadge}
+            ${sub.isCancelling ? '' : alertBadgeHTML}
           </div>
         </div>
         <div class="card-amount">
@@ -1006,6 +1050,7 @@ function renderCard(sub) {
       <button class="card-menu-btn" aria-label="メニュー">···</button>
       <div class="card-dropdown">
         <button class="dropdown-item edit-btn">✏️ 編集</button>
+        <button class="dropdown-item cancel-toggle-btn">${sub.isCancelling ? '✅ 解約予定を解除' : '🚫 解約予定にする'}</button>
         <button class="dropdown-item delete delete-btn">🗑 削除</button>
       </div>
     </div>
@@ -1021,6 +1066,10 @@ function renderCard(sub) {
   card.querySelector('.edit-btn').addEventListener('click', () => {
     card.querySelector('.card-dropdown').classList.remove('show');
     openModal(sub.id);
+  });
+  card.querySelector('.cancel-toggle-btn').addEventListener('click', () => {
+    card.querySelector('.card-dropdown').classList.remove('show');
+    toggleCancelling(sub.id);
   });
   card.querySelector('.delete-btn').addEventListener('click', () => {
     card.querySelector('.card-dropdown').classList.remove('show');
