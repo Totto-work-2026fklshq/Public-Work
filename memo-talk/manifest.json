@@ -1,0 +1,14 @@
+{
+  "name": "メモトーク",
+  "short_name": "メモトーク",
+  "description": "トーク形式で書ける1人用メモアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#007AFF",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="メモトーク">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <title>メモトーク</title>
+  <style>
+    :root {
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --primary: #007AFF;
+      --primary-dark: #0056CC;
+      --text: #1C1C1E;
+      --text-sub: #6B6B6B;
+      --text-light: #AEAEB2;
+      --separator: #E5E5EA;
+      --alert-red: #FF3B30;
+      --radius: 12px;
+      --vvh: 100dvh;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      font-family: inherit;
+    }
+
+    input, select, textarea {
+      font-family: inherit;
+      font-size: 16px; /* iOS zoom防止 */
+    }
+
+    /* ===== VIEW LAYOUT ===== */
+    .view {
+      position: fixed;
+      inset: 0;
+      height: var(--vvh);
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    #thread-view {
+      z-index: 300;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #thread-view.show { transform: translateX(0); }
+
+    /* ===== HEADER ===== */
+    .app-header {
+      flex-shrink: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--separator);
+      padding: env(safe-area-inset-top, 0) 8px 0;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      height: 52px;
+      position: relative;
+    }
+
+    .header-title {
+      flex: 1;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .header-btn {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--primary);
+      border-radius: 50%;
+    }
+
+    .header-btn:active { background: var(--bg); }
+
+    #back-btn { font-size: 24px; font-weight: 400; }
+
+    /* ===== HEADER MENU ===== */
+    #header-dropdown {
+      display: none;
+      position: absolute;
+      right: 8px;
+      top: calc(100% + 4px);
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      overflow: hidden;
+      z-index: 400;
+      min-width: 180px;
+    }
+
+    #header-dropdown.show { display: block; }
+
+    .dropdown-item {
+      width: 100%;
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--separator);
+      transition: background 0.1s;
+    }
+
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:active { background: var(--bg); }
+    .dropdown-item.delete { color: var(--alert-red); }
+
+    /* ===== MESSAGE LIST ===== */
+    .message-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 12px 16px;
+    }
+
+    .date-separator {
+      display: flex;
+      justify-content: center;
+      margin: 14px 0 10px;
+    }
+
+    .date-separator span {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-sub);
+      background: rgba(0,0,0,0.06);
+      border-radius: 100px;
+      padding: 4px 12px;
+    }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-bottom: 4px;
+      position: relative;
+    }
+
+    .msg-line {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      max-width: 100%;
+    }
+
+    .msg-meta {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: var(--text-light);
+      text-align: right;
+      line-height: 1.4;
+      padding-bottom: 4px;
+    }
+
+    .bubble {
+      background: var(--primary);
+      color: white;
+      border-radius: 18px 18px 4px 18px;
+      padding: 9px 13px;
+      max-width: 78%;
+      font-size: 16px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .bubble:active { background: var(--primary-dark); }
+
+    .msg-menu-btn {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      font-size: 18px;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -1px;
+      align-self: center;
+    }
+
+    .msg-menu-btn:active { background: rgba(0,0,0,0.06); }
+
+    .msg-dropdown {
+      display: none;
+      position: absolute;
+      right: 8px;
+      top: calc(100% - 4px);
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      overflow: hidden;
+      z-index: 150;
+      min-width: 130px;
+    }
+
+    .msg-dropdown.show { display: block; }
+
+    .msg-row.menu-open { z-index: 160; }
+
+    .reply-badge {
+      margin-top: 2px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 0 6px;
+    }
+
+    .reply-badge:active { opacity: 0.6; }
+
+    /* スレッド画面の親メッセージ */
+    .thread-root-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .thread-root-text {
+      font-size: 16px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .thread-root-time {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    .thread-reply-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin: 12px 2px 8px;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 32px;
+      text-align: center;
+      color: var(--text-sub);
+      height: 100%;
+    }
+
+    .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .empty-desc { font-size: 14px; line-height: 1.5; }
+
+    /* ===== COMPOSER ===== */
+    .composer {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-top: 1px solid var(--separator);
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0));
+    }
+
+    .editing-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 0 4px 8px;
+    }
+
+    .composer.editing .editing-bar { display: flex; }
+
+    .editing-bar-text { flex: 1; }
+
+    .editing-cancel {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--separator);
+      color: var(--text-sub);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .composer-inner {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .composer textarea {
+      flex: 1;
+      border: 1px solid var(--separator);
+      border-radius: 18px;
+      background: var(--surface);
+      padding: 8px 14px;
+      resize: none;
+      line-height: 1.4;
+      max-height: 120px;
+      outline: none;
+    }
+
+    .composer textarea:focus { border-color: var(--primary); }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .send-btn:disabled { opacity: 0.35; }
+    .send-btn:not(:disabled):active { transform: scale(0.9); }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.78);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 500;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== トーク画面 ===== -->
+  <div id="talk-view" class="view">
+    <header class="app-header">
+      <div class="header-inner">
+        <div style="width:44px"></div>
+        <h1 class="header-title">メモトーク</h1>
+        <button id="menu-btn" class="header-btn" aria-label="メニュー">⋯</button>
+        <div id="header-dropdown">
+          <button class="dropdown-item" id="export-btn">📤 エクスポート</button>
+          <button class="dropdown-item" id="import-btn">📥 インポート</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="message-list" class="message-list"></div>
+
+    <div id="talk-composer" class="composer">
+      <div class="editing-bar">
+        <span class="editing-bar-text">✏️ メッセージを編集中</span>
+        <button class="editing-cancel" id="talk-edit-cancel" aria-label="編集をやめる">✕</button>
+      </div>
+      <div class="composer-inner">
+        <textarea id="talk-input" rows="1" placeholder="メモを入力…" enterkeyhint="enter"></textarea>
+        <button id="talk-send" class="send-btn" disabled aria-label="送信">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スレッド画面 ===== -->
+  <div id="thread-view" class="view">
+    <header class="app-header">
+      <div class="header-inner">
+        <button id="back-btn" class="header-btn" aria-label="戻る">‹</button>
+        <h1 class="header-title">スレッド</h1>
+        <div style="width:44px"></div>
+      </div>
+    </header>
+
+    <div id="reply-list" class="message-list"></div>
+
+    <div id="thread-composer" class="composer">
+      <div class="editing-bar">
+        <span class="editing-bar-text">✏️ 返信を編集中</span>
+        <button class="editing-cancel" id="thread-edit-cancel" aria-label="編集をやめる">✕</button>
+      </div>
+      <div class="composer-inner">
+        <textarea id="thread-input" rows="1" placeholder="返信を入力…" enterkeyhint="enter"></textarea>
+        <button id="thread-send" class="send-btn" disabled aria-label="送信">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <input type="file" id="import-file" accept="application/json,.json" style="display:none">
+
+<script>
+const STORAGE_KEY = 'memo_talk_v1';
+
+// ===== AppState =====
+const AppState = {
+  messages: [],
+  openThreadId: null,
+  editingId: null,
+};
+
+// ===== Storage =====
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    AppState.messages = raw ? JSON.parse(raw) : [];
+  } catch {
+    AppState.messages = [];
+  }
+}
+
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState.messages));
+}
+
+// ===== CRUD =====
+function addMessage(text, parentId) {
+  AppState.messages.push({
+    id: crypto.randomUUID(),
+    parentId: parentId || null,
+    text,
+    createdAt: new Date().toISOString(),
+    updatedAt: null,
+  });
+  saveToStorage();
+}
+
+function updateMessage(id, text) {
+  const msg = AppState.messages.find(m => m.id === id);
+  if (!msg) return;
+  msg.text = text;
+  msg.updatedAt = new Date().toISOString();
+  saveToStorage();
+}
+
+function deleteMessage(id) {
+  AppState.messages = AppState.messages.filter(m => m.id !== id && m.parentId !== id);
+  saveToStorage();
+}
+
+function repliesOf(id) {
+  return AppState.messages
+    .filter(m => m.parentId === id)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function topLevelMessages() {
+  return AppState.messages
+    .filter(m => m.parentId === null)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+// ===== Format helpers =====
+function escapeHTML(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function dateKey(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function formatDateLabel(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (dateKey(iso) === dateKey(today.toISOString())) return '今日';
+  if (dateKey(iso) === dateKey(yesterday.toISOString())) return '昨日';
+  const youbi = ['日','月','火','水','木','金','土'][d.getDay()];
+  const year = d.getFullYear() !== today.getFullYear() ? `${d.getFullYear()}年` : '';
+  return `${year}${d.getMonth() + 1}月${d.getDate()}日(${youbi})`;
+}
+
+// ===== Render: message row（トーク/スレッド共通） =====
+function createMessageRow(msg, opts) {
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.dataset.id = msg.id;
+
+  const edited = msg.updatedAt ? '編集済み<br>' : '';
+  const replies = opts.showReplyBadge ? repliesOf(msg.id) : [];
+
+  row.innerHTML = `
+    <div class="msg-line">
+      <button class="msg-menu-btn" aria-label="メニュー">···</button>
+      <div class="msg-meta">${edited}${formatTime(msg.createdAt)}</div>
+      <div class="bubble">${escapeHTML(msg.text)}</div>
+    </div>
+    ${replies.length > 0 ? `<button class="reply-badge">↩︎ 返信 ${replies.length}件</button>` : ''}
+    <div class="msg-dropdown">
+      ${opts.showReplyBadge ? '<button class="dropdown-item thread-btn">💬 スレッド</button>' : ''}
+      <button class="dropdown-item edit-btn">✏️ 編集</button>
+      <button class="dropdown-item delete-btn delete">🗑 削除</button>
+    </div>
+  `;
+
+  const dropdown = row.querySelector('.msg-dropdown');
+
+  row.querySelector('.msg-menu-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const wasOpen = dropdown.classList.contains('show');
+    closeAllDropdowns();
+    if (!wasOpen) {
+      dropdown.classList.add('show');
+      row.classList.add('menu-open');
+    }
+  });
+
+  if (opts.showReplyBadge) {
+    row.querySelector('.bubble').addEventListener('click', () => openThread(msg.id));
+    const badge = row.querySelector('.reply-badge');
+    if (badge) badge.addEventListener('click', () => openThread(msg.id));
+    row.querySelector('.thread-btn').addEventListener('click', () => {
+      closeAllDropdowns();
+      openThread(msg.id);
+    });
+  }
+
+  row.querySelector('.edit-btn').addEventListener('click', () => {
+    closeAllDropdowns();
+    startEditing(msg);
+  });
+
+  row.querySelector('.delete-btn').addEventListener('click', () => {
+    closeAllDropdowns();
+    const replyCount = repliesOf(msg.id).length;
+    const warn = replyCount > 0 ? `\n返信${replyCount}件も一緒に削除されます。` : '';
+    if (!confirm(`このメッセージを削除しますか？${warn}`)) return;
+    deleteMessage(msg.id);
+    if (AppState.editingId === msg.id) cancelEditing();
+    if (AppState.openThreadId === msg.id) closeThread();
+    renderAll();
+    showToast('🗑 削除しました');
+  });
+
+  return row;
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.msg-dropdown.show, #header-dropdown.show')
+    .forEach(d => d.classList.remove('show'));
+  document.querySelectorAll('.msg-row.menu-open').forEach(r => r.classList.remove('menu-open'));
+}
+
+// ===== Render: トーク画面 =====
+function renderTalk() {
+  const list = document.getElementById('message-list');
+  list.innerHTML = '';
+
+  const messages = topLevelMessages();
+  if (messages.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <div class="empty-title">メモはまだありません</div>
+        <div class="empty-desc">最初のメモを送ってみよう。<br>メッセージをタップするとスレッドで返信できます。</div>
+      </div>
+    `;
+    return;
+  }
+
+  let prevDate = null;
+  messages.forEach(msg => {
+    const key = dateKey(msg.createdAt);
+    if (key !== prevDate) {
+      const sep = document.createElement('div');
+      sep.className = 'date-separator';
+      sep.innerHTML = `<span>${formatDateLabel(msg.createdAt)}</span>`;
+      list.appendChild(sep);
+      prevDate = key;
+    }
+    list.appendChild(createMessageRow(msg, { showReplyBadge: true }));
+  });
+}
+
+// ===== Render: スレッド画面 =====
+function renderThread() {
+  const list = document.getElementById('reply-list');
+  const root = AppState.messages.find(m => m.id === AppState.openThreadId);
+  if (!root) { closeThread(); return; }
+
+  list.innerHTML = `
+    <div class="thread-root-card">
+      <div class="thread-root-text">${escapeHTML(root.text)}</div>
+      <div class="thread-root-time">${formatDateLabel(root.createdAt)} ${formatTime(root.createdAt)}${root.updatedAt ? '・編集済み' : ''}</div>
+    </div>
+  `;
+
+  const replies = repliesOf(root.id);
+  const label = document.createElement('div');
+  label.className = 'thread-reply-label';
+  label.textContent = replies.length > 0 ? `返信 ${replies.length}件` : 'まだ返信はありません';
+  list.appendChild(label);
+
+  replies.forEach(msg => {
+    list.appendChild(createMessageRow(msg, { showReplyBadge: false }));
+  });
+}
+
+function renderAll() {
+  renderTalk();
+  if (AppState.openThreadId) renderThread();
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  const listId = AppState.openThreadId ? 'reply-list' : 'message-list';
+  const list = document.getElementById(listId);
+  list.scrollTop = list.scrollHeight;
+}
+
+// ===== Thread open/close =====
+function openThread(id) {
+  if (AppState.editingId) cancelEditing();
+  AppState.openThreadId = id;
+  renderThread();
+  document.getElementById('thread-view').classList.add('show');
+  scrollToBottom();
+}
+
+function closeThread() {
+  if (AppState.editingId) cancelEditing();
+  AppState.openThreadId = null;
+  document.getElementById('thread-view').classList.remove('show');
+  renderTalk();
+}
+
+// ===== Composer =====
+function activeComposer() {
+  const inThread = AppState.openThreadId !== null;
+  return {
+    composer: document.getElementById(inThread ? 'thread-composer' : 'talk-composer'),
+    input: document.getElementById(inThread ? 'thread-input' : 'talk-input'),
+    send: document.getElementById(inThread ? 'thread-send' : 'talk-send'),
+  };
+}
+
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+}
+
+function updateSendState(input, send) {
+  send.disabled = input.value.trim() === '';
+}
+
+function submitMessage() {
+  const { composer, input, send } = activeComposer();
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (AppState.editingId) {
+    updateMessage(AppState.editingId, text);
+    AppState.editingId = null;
+    composer.classList.remove('editing');
+    showToast('✏️ 編集しました');
+  } else {
+    addMessage(text, AppState.openThreadId);
+  }
+
+  input.value = '';
+  autoResize(input);
+  updateSendState(input, send);
+  renderAll();
+}
+
+function startEditing(msg) {
+  const { composer, input, send } = activeComposer();
+  AppState.editingId = msg.id;
+  composer.classList.add('editing');
+  input.value = msg.text;
+  autoResize(input);
+  updateSendState(input, send);
+  input.focus();
+}
+
+function cancelEditing() {
+  const { composer, input, send } = activeComposer();
+  AppState.editingId = null;
+  composer.classList.remove('editing');
+  input.value = '';
+  autoResize(input);
+  updateSendState(input, send);
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ===== Export / Import =====
+function exportData() {
+  const json = JSON.stringify(AppState.messages, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `memo_talk_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`✅ ${AppState.messages.length}件をエクスポートしました`);
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('invalid format');
+      if (!confirm(`${data.length}件のデータをインポートします。\n現在のデータは上書きされます。よろしいですか？`)) return;
+      AppState.messages = data;
+      saveToStorage();
+      renderAll();
+      showToast(`✅ ${data.length}件をインポートしました`);
+    } catch {
+      alert('ファイルの読み込みに失敗しました。\n正しいJSONファイルか確認してください。');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== Init =====
+function init() {
+  loadFromStorage();
+  renderTalk();
+  scrollToBottom();
+
+  // composer 配線（トーク/スレッド両方）
+  [
+    { input: 'talk-input', send: 'talk-send', cancel: 'talk-edit-cancel' },
+    { input: 'thread-input', send: 'thread-send', cancel: 'thread-edit-cancel' },
+  ].forEach(({ input, send, cancel }) => {
+    const ta = document.getElementById(input);
+    const btn = document.getElementById(send);
+    ta.addEventListener('input', () => { autoResize(ta); updateSendState(ta, btn); });
+    ta.addEventListener('focus', () => setTimeout(scrollToBottom, 300));
+    btn.addEventListener('click', submitMessage);
+    document.getElementById(cancel).addEventListener('click', cancelEditing);
+  });
+
+  // スレッド戻る
+  document.getElementById('back-btn').addEventListener('click', closeThread);
+
+  // ヘッダーメニュー
+  document.getElementById('menu-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('header-dropdown').classList.toggle('show');
+  });
+  document.getElementById('export-btn').addEventListener('click', () => {
+    closeAllDropdowns();
+    exportData();
+  });
+  document.getElementById('import-btn').addEventListener('click', () => {
+    closeAllDropdowns();
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', e => {
+    if (e.target.files[0]) importData(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  // 画面のどこかをタップでドロップダウンを閉じる
+  document.addEventListener('click', closeAllDropdowns);
+
+  // iOSキーボード対策: visualViewport で実表示高さを追従
+  if (window.visualViewport) {
+    const onViewport = () => {
+      document.documentElement.style.setProperty('--vvh', window.visualViewport.height + 'px');
+      scrollToBottom();
+    };
+    window.visualViewport.addEventListener('resize', onViewport);
+    onViewport();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
