@@ -884,6 +884,31 @@ function formatDate(dateStr) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+// ===== Auto Renew =====
+function autoRenewExpired() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let changed = false;
+
+  AppState.subscriptions.forEach(sub => {
+    if (sub.isCancelling) return;
+    let date = new Date(sub.nextBillingDate + 'T00:00:00');
+    if (date >= today) return;
+
+    while (date < today) {
+      if (sub.billingCycle === 'yearly') {
+        date.setFullYear(date.getFullYear() + 1);
+      } else {
+        date.setMonth(date.getMonth() + 1);
+      }
+    }
+    sub.nextBillingDate = date.toISOString().split('T')[0];
+    changed = true;
+  });
+
+  if (changed) saveToStorage();
+}
+
 // ===== CRUD =====
 function addSubscription(data) {
   AppState.subscriptions.push({
@@ -1213,6 +1238,7 @@ function importData(file) {
 // ===== Event Handlers =====
 function init() {
   loadFromStorage();
+  autoRenewExpired();
   renderAll();
 
   document.getElementById('fab').addEventListener('click', () => openModal(null));
